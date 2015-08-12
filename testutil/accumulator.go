@@ -21,17 +21,27 @@ type Accumulator struct {
 
 // Add adds a measurement point to the accumulator
 func (a *Accumulator) Add(measurement string, value interface{}, tags map[string]string) {
-	if tags == nil {
-		tags = map[string]string{}
-	}
-	a.Points = append(
-		a.Points,
-		&Point{
-			Measurement: measurement,
-			Values:      map[string]interface{}{"value": value},
-			Tags:        tags,
-		},
-	)
+	var timestamp time.Time
+	a.AddWithTime(measurement, value, tags, timestamp)
+}
+
+func (a *Accumulator) AddWithTime(
+	measurement string,
+	value interface{},
+	tags map[string]string,
+	timestamp time.Time,
+) {
+	values := map[string]interface{}{"value": value}
+	a.AddValuesWithTime(measurement, values, tags, timestamp)
+}
+
+func (a *Accumulator) AddValues(
+	measurement string,
+	values map[string]interface{},
+	tags map[string]string,
+) {
+	var timestamp time.Time
+	a.AddValuesWithTime(measurement, values, tags, timestamp)
 }
 
 // AddValuesWithTime adds a measurement point with a specified timestamp.
@@ -41,6 +51,9 @@ func (a *Accumulator) AddValuesWithTime(
 	tags map[string]string,
 	timestamp time.Time,
 ) {
+	if tags == nil {
+		tags = map[string]string{}
+	}
 	a.Points = append(
 		a.Points,
 		&Point{

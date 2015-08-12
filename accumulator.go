@@ -24,38 +24,31 @@ type BatchPoints struct {
 	Config *ConfiguredPlugin
 }
 
-// Add adds a measurement
+// Add adds a measurement with one field, "value"
 func (bp *BatchPoints) Add(measurement string, val interface{}, tags map[string]string) {
-	bp.mu.Lock()
-	defer bp.mu.Unlock()
+	var timestamp time.Time
+	bp.AddWithTime(measurement, val, tags, timestamp)
+}
 
-	measurement = bp.Prefix + measurement
+// Adds a measurement with one field, "value" with a provided timestamp
+func (bp *BatchPoints) AddWithTime(
+	measurement string,
+	val interface{},
+	tags map[string]string,
+	timestamp time.Time,
+) {
+	values := map[string]interface{}{"value": val}
+	bp.AddValuesWithTime(measurement, values, tags, timestamp)
+}
 
-	if bp.Config != nil {
-		if !bp.Config.ShouldPass(measurement, tags) {
-			return
-		}
-	}
-
-	if bp.Debug {
-		var tg []string
-
-		for k, v := range tags {
-			tg = append(tg, fmt.Sprintf("%s=\"%s\"", k, v))
-		}
-
-		sort.Strings(tg)
-
-		fmt.Printf("> [%s] %s value=%v\n", strings.Join(tg, " "), measurement, val)
-	}
-
-	bp.Points = append(bp.Points, client.Point{
-		Measurement: measurement,
-		Tags:        tags,
-		Fields: map[string]interface{}{
-			"value": val,
-		},
-	})
+// Adds a measurement with a given set of values
+func (bp *BatchPoints) AddValues(
+	measurement string,
+	values map[string]interface{},
+	tags map[string]string,
+) {
+	var timestamp time.Time
+	bp.AddValuesWithTime(measurement, values, tags, timestamp)
 }
 
 // AddValuesWithTime adds a measurement with a provided timestamp
@@ -95,10 +88,12 @@ func (bp *BatchPoints) AddValuesWithTime(
 		fmt.Printf("> [%s] %s %s\n", strings.Join(tg, " "), measurement, strings.Join(vals, " "))
 	}
 
-	bp.Points = append(bp.Points, client.Point{
+	newPoint := client.Point{
 		Measurement: measurement,
 		Tags:        tags,
 		Fields:      values,
 		Time:        timestamp,
-	})
+	}
+
+	bp.Points = append(bp.Points, newPoint)
 }
